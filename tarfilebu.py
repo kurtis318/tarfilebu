@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import sys
+import os
 import argparse
 from RunCmdPy import RunCmd
 
@@ -54,18 +55,52 @@ def read_dirfile(fname):
     cmd_runner.dump_stdout()
     return cmd_runner.get_stdout
 
-def save_file_dirs(dirlist):
+def save_dirs(sdir,dirlist):
 
     for dir in dirlist:
-        print(">>> INFO: <dir={}>".format(dir))
 
+        fullpath=sdir + "/" + dir
+        if os.path.exists(fullpath):
+            print(">>> INFO: found <dir={}> <fullpath={}>".format(dir,fullpath))
+        else:
+            print(">>> WARN: could not find <dir={}> <fullpath={}>. Skipping request.".format(dir,fullpath))
+            continue
+
+        cmd_runner.run("du -sh "+fullpath+"|awk '{print $1;}'")
+        if cmd_runner.rc == 0:
+            human_readable_size = cmd_runner.get_stdout[0]
+        else:
+            human_readable_size = "error"
+
+        print("                <human_readable_size={}>".format(human_readable_size))
+
+def verify_args(args):
+    ecnt=0
+    if not os.path.isfile(args.dirfile):
+        ecnt+=1
+        print(">>> ERROR: directory file not found <dirfile={}".format(args.dirfile))
+
+    if not os.path.isdir(args.srcdir):
+        ecnt+=1
+        print(">>> ERROR: source directory not found <srcdir={}".format(args.srcdir))
+
+    if not os.path.isdir(args.tardir):
+        ecnt+=1
+        print(">>> ERROR: target directory not found <tardir={}".format(args.srcdir))
+
+    if ecnt:
+        print(">>> ERROR: {} argument errors found.  Aborting script now.")
+        exit(100)
+    else:
+        print(">>> INFO: No argument errors found")
 
 # ---------------------------------------------------------------------
 def main():
     print("\nRunning main() function")
     input_args = parse_parms(sys.argv)
+    verify_args(input_args)
     dirs = read_dirfile(input_args.dirfile)
-    save_file_dirs(dirs)
+    save_dirs(input_args.srcdir, dirs)
     return 0
 
 
