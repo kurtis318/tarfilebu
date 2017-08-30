@@ -116,12 +116,10 @@ def save_dirs(sdir, tdir, dirlist, mode):
         cmd = 'tar {} {} {}'.format(tar_opts, tar_file_path, dir)
 
         # Caller decides if this is a NORMAL (tar command run) or a test (just print tar command)
-        if mode == NORMAL_MODE:
-            print('{} NORM: <cmd={}>'.format(BLANKS20, cmd))
-            # ACTUALLY RUN COMMAND HERE!!!
+        print("{}<mode={}> <cmd={}>".format(BLANKS16, mode, cmd,))
+        # cmd_runner.elaspe_time_run(cmd, mode)
 
-        else:
-            print('{} TEST--> <cmd={}>'.format(BLANKS20, cmd))
+    return
 
 
 def verify_args(args):
