@@ -7,6 +7,10 @@ from RunCmdPy import RunCmd
 
 cmd_runner = RunCmd()
 
+NORMAL_MODE = "normal"
+TEST_MODE = "test"
+BLANKS16=' '*16
+BLANKS20=' '*20
 # ---------------------------------------------------------------------
 def parse_parms(cmd_parms):
     """
@@ -32,7 +36,8 @@ def parse_parms(cmd_parms):
     #    parser.add_argument('-h', '--help', help='Display help text', required=False)
     parser.add_argument('-a', '--all', help="Backup all directories", required=False, default=False, dest="backup_all")
     parser.add_argument('-k', '--kvm', help='Backup kvm direcotry', required=False, default=False, dest="backup_kvm")
-    parser.add_argument('-m', '--mode', help="Mode to run", required=False, default="normal", dest="run_mode")
+    parser.add_argument('-m', '--mode', help="Mode to run", required=False, choices=[NORMAL_MODE,TEST_MODE],
+                            default=NORMAL_MODE, dest="run_mode")
 
     # Perform parsing and issue messages.
     args = parser.parse_args()
@@ -55,7 +60,27 @@ def read_dirfile(fname):
     cmd_runner.dump_stdout()
     return cmd_runner.get_stdout
 
-def save_dirs(sdir,dirlist):
+def compute_dir_size_human_readable(fullpath):
+    cmd_runner.run("du -sh " + fullpath + "|awk '{print $1;}'")
+    if cmd_runner.rc == 0:
+        hr_size = cmd_runner.get_stdout[0]
+    else:
+        hr_size = "error"
+    return hr_size
+
+def count_num_files_dirs(path):
+    files = folders = 0
+
+    for _, dirnames, filenames in os.walk(path):
+        # ^ this idiom means "we won't be using this value"
+        files += len(filenames)
+        folders += len(dirnames)
+
+    # print "{:,} files, {:,} folders".format(files, folders)
+
+    return(files,folders)
+
+def save_dirs(sdir, tdir, dirlist, mode):
 
     for dir in dirlist:
 
@@ -66,13 +91,38 @@ def save_dirs(sdir,dirlist):
             print(">>> WARN: could not find <dir={}> <fullpath={}>. Skipping request.".format(dir,fullpath))
             continue
 
-        cmd_runner.run("du -sh "+fullpath+"|awk '{print $1;}'")
-        if cmd_runner.rc == 0:
-            human_readable_size = cmd_runner.get_stdout[0]
-        else:
-            human_readable_size = "error"
+        # Determine human readable size of directory
+        human_readable_size = compute_dir_size_human_readable(fullpath)
 
-        print("                <human_readable_size={}>".format(human_readable_size))
+        # Compute number of files and number of sub-directories
+        (fcnt, dcnt) = count_num_files_dirs(fullpath)
+
+        # Output stats
+        print("{}<human_readable_size={}> <files={:,}> <dirs={:,}>".format(BLANKS16,human_readable_size,fcnt,dcnt))
+
+        # BASETOPTS="-C ${FROMDIR} -p "
+        base_tar_opts = '-C {} -p '.format(sdir)
+
+        # TARF="${TODIR}/${DIR}.tar"
+        tar_file_path = '{}{}.tar'.format(tdir,sdir)
+
+        # If tar file already exists, add update flag
+        if os.path.isfile(tar_file_path):
+            tar_opts = base_tar_opts + ' -uf'
+        else:
+            tar_opts = base_tar_opts + ' -cf'
+
+        # Now we have all the pieces to build a tar command.
+        cmd = 'tar {} {} {}'.format(tar_opts, tar_file_path, dir)
+
+        # Caller decides if this is a NORMAL (tar command run) or a test (just print tar command)
+        if mode == NORMAL_MODE:
+            print('{} NORM: <cmd={}>'.format(BLANKS20, cmd))
+            # ACTUALLY RUN COMMAND HERE!!!
+
+        else:
+            print('{} TEST--> <cmd={}>'.format(BLANKS20, cmd))
+
 
 def verify_args(args):
     ecnt=0
@@ -100,7 +150,7 @@ def main():
     input_args = parse_parms(sys.argv)
     verify_args(input_args)
     dirs = read_dirfile(input_args.dirfile)
-    save_dirs(input_args.srcdir, dirs)
+    save_dirs(input_args.srcdir, input_args.tardir, dirs, input_args.run_mode)
     return 0
 
 
