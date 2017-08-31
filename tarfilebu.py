@@ -104,7 +104,7 @@ def save_dirs(sdir, tdir, dirlist, mode):
         base_tar_opts = '-C {} -p '.format(sdir)
 
         # TARF="${TODIR}/${DIR}.tar"
-        tar_file_path = '{}{}.tar'.format(tdir,sdir)
+        tar_file_path = '{}/{}.tar'.format(tdir,dir)
 
         # If tar file already exists, add update flag
         if os.path.isfile(tar_file_path):
@@ -117,8 +117,13 @@ def save_dirs(sdir, tdir, dirlist, mode):
 
         # Caller decides if this is a NORMAL (tar command run) or a test (just print tar command)
         print("{}<mode={}> <cmd={}>".format(BLANKS16, mode, cmd,))
-        # cmd_runner.elaspe_time_run(cmd, mode)
-
+        msecs = cmd_runner.elaspe_time_run(cmd, mode)
+        print("{}<rc={}> Elapased time={}".format(BLANKS16,
+                                                  cmd_runner.get_rc,
+                                                  cmd_runner.ms_2_human_readable(msecs)))
+        if cmd_runner.get_rc != 0:
+            print(">>> ERROR: stderr follows:")
+            cmd_runner.dump_stderr()
     return
 
 
