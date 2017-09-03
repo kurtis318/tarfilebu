@@ -11,7 +11,8 @@ NORMAL_MODE = "normal"
 TEST_MODE = "test"
 BLANKS16=' '*16
 BLANKS20=' '*20
-# ---------------------------------------------------------------------
+DOTS_TAR_FILE_NAME="__DOTDIRS__"
+
 def parse_parms(cmd_parms):
     """
 
@@ -20,8 +21,7 @@ def parse_parms(cmd_parms):
     :return: command parameters
     :rtype: list
     """
-    cmd_parm_cnt = len(cmd_parms) - 1
-
+    #    cmd_parm_cnt = len(cmd_parms) - 1
     #    print(">>>parse_parms(.): Starting")
     #    print("   This is the name/path of the script:{0}".format(cmd_parms[0]))
     #    print("   Number of arguments:{0}".format(cmd_parm_cnt))
@@ -38,6 +38,7 @@ def parse_parms(cmd_parms):
     parser.add_argument('-k', '--kvm', help='Backup kvm direcotry', required=False, default=False, dest="backup_kvm")
     parser.add_argument('-m', '--mode', help="Mode to run", required=False, choices=[NORMAL_MODE,TEST_MODE],
                             default=NORMAL_MODE, dest="run_mode")
+    parser.add_argument('-d', action='store_true', help='Unclude dot files', required=False, default=False, dest="dodots") 
 
     # Perform parsing and issue messages.
     args = parser.parse_args()
@@ -82,13 +83,13 @@ def count_num_files_dirs(path):
 
 def save_dirs(sdir, tdir, dirlist, mode):
 
-    for dir in dirlist:
+    for __dir in dirlist:
 
-        fullpath=sdir + "/" + dir
+        fullpath=sdir + "/" + __dir
         if os.path.exists(fullpath):
-            print(">>> INFO: found <dir={}> <fullpath={}>".format(dir,fullpath))
+            print(">>> INFO: found <dir={}> <fullpath={}>".format(__dir,fullpath))
         else:
-            print(">>> WARN: could not find <dir={}> <fullpath={}>. Skipping request.".format(dir,fullpath))
+            print(">>> WARN: could not find <dir={}> <fullpath={}>. Skipping request.".format(__dir,fullpath))
             continue
 
         # Determine human readable size of directory
@@ -100,11 +101,9 @@ def save_dirs(sdir, tdir, dirlist, mode):
         # Output stats
         print("{}<human_readable_size={}> <files={:,}> <dirs={:,}>".format(BLANKS16,human_readable_size,fcnt,dcnt))
 
-        # BASETOPTS="-C ${FROMDIR} -p "
         base_tar_opts = '-C {} -p '.format(sdir)
 
-        # TARF="${TODIR}/${DIR}.tar"
-        tar_file_path = '{}/{}.tar'.format(tdir,dir)
+        tar_file_path = '{}/{}.tar'.format(tdir, __dir)
 
         # If tar file already exists, add update flag
         if os.path.isfile(tar_file_path):
@@ -113,7 +112,7 @@ def save_dirs(sdir, tdir, dirlist, mode):
             tar_opts = base_tar_opts + ' -cf'
 
         # Now we have all the pieces to build a tar command.
-        cmd = 'tar {} {} {}'.format(tar_opts, tar_file_path, dir)
+        cmd = 'tar {} {} {}'.format(tar_opts, tar_file_path, __dir)
 
         # Caller decides if this is a NORMAL (tar command run) or a test (just print tar command)
         print("{}<mode={}> <cmd={}>".format(BLANKS16, mode, cmd,))
@@ -126,6 +125,47 @@ def save_dirs(sdir, tdir, dirlist, mode):
             cmd_runner.dump_stderr()
     return
 
+def save_all_dot_dirs(sdir, tdir, dirlist, mode):
+    
+    # Generate list of dirs that start with a dot.  Must cd to base dir and then use find. Easier to grep.
+    cmd='cd {}; find . -maxdepth 1 -type d|grep "^\./\."|xargs'.format(sdir)
+    cmd_runner.run(cmd, mode)
+    
+    if cmd_runner.get_rc != 0:
+        print "{} WARN: Cannot find dot files in directory {}".format(BLANKS16, sdir)
+        print(">>> WARN: stderr follows:")
+        cmd_runner.dump_stderr()   
+        return
+    
+    # There should be ONLY 1 string returned which is blank delimited list of dirs beginning with dot.
+    dirlist = cmd_runner.get_stdout[0]
+    
+    base_tar_opts = '-C {} -p '.format(sdir)
+
+    # Need to output to "special" tar file name.
+    tar_file_path = '{}/{}.tar'.format(tdir,DOTS_TAR_FILE_NAME)
+
+    # If tar file already exists, add update flag
+    if os.path.isfile(tar_file_path):
+        tar_opts = base_tar_opts + ' -uf'
+    else:
+        tar_opts = base_tar_opts + ' -cf'
+
+    # Now we have all the pieces to build a tar command.
+    cmd = 'tar {} {} {}'.format(tar_opts, tar_file_path, dirlist)
+    print ">>> INFO: Found <dirlist={}>\n{}".format(dirlist,BLANKS16)
+    
+    # Caller decides if this is a NORMAL (tar command run) or a test (just print tar command)        
+    print("{}<mode={}> <cmd={}>".format(BLANKS16, mode, cmd))
+    msecs = cmd_runner.elaspe_time_run(cmd, mode)
+    print("{}<rc={}> Elapased time={}".format(BLANKS16,
+                                              cmd_runner.get_rc,
+                                              cmd_runner.ms_2_human_readable(msecs)))
+    if cmd_runner.get_rc != 0:
+        print(">>> ERROR: stderr follows:")
+        cmd_runner.dump_stderr()   
+    
+    return
 
 def verify_args(args):
     ecnt=0
@@ -142,24 +182,24 @@ def verify_args(args):
         print(">>> ERROR: target directory not found <tardir={}".format(args.srcdir))
 
     if ecnt:
-        print(">>> ERROR: {} argument errors found.  Aborting script now.")
+        print(">>> ERROR: {} argument errors found.  Aborting script now.".format(ecnt))
         exit(100)
     else:
         print(">>> INFO: No argument errors found")
 
-# ---------------------------------------------------------------------
+
 def main():
     print("\nRunning main() function")
     input_args = parse_parms(sys.argv)
     verify_args(input_args)
     dirs = read_dirfile(input_args.dirfile)
     save_dirs(input_args.srcdir, input_args.tardir, dirs, input_args.run_mode)
+    if input_args.dodots:
+        save_all_dot_dirs(input_args.srcdir, input_args.tardir, dirs, input_args.run_mode)
+        
     return 0
 
 
-# ---------------------------------------------------------------------
-# ---------------------------------------------------------------------
-# ---------------------------------------------------------------------
 if __name__ == "__main__":
     # execute only if run as a script
     main()
