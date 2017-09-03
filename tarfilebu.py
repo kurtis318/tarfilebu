@@ -125,11 +125,12 @@ def save_dirs(sdir, tdir, dirlist, mode):
             cmd_runner.dump_stderr()
     return
 
-def save_all_dot_dirs(sdir, tdir, dirlist, mode):
+def save_all_dot_dirs(sdir, tdir, mode):
     
     # Generate list of dirs that start with a dot.  Must cd to base dir and then use find. Easier to grep.
-    cmd='cd {}; find . -maxdepth 1 -type d|grep "^\./\."|xargs'.format(sdir)
-    cmd_runner.run(cmd, mode)
+    awk_pgm = "awk '{print substr($1,3);}'"
+    cmd='cd {}; find . -maxdepth 1 -type d|grep "^\./\."|{}|xargs'.format(sdir, awk_pgm)
+    cmd_runner.run(cmd)
     
     if cmd_runner.get_rc != 0:
         print "{} WARN: Cannot find dot files in directory {}".format(BLANKS16, sdir)
@@ -153,7 +154,7 @@ def save_all_dot_dirs(sdir, tdir, dirlist, mode):
 
     # Now we have all the pieces to build a tar command.
     cmd = 'tar {} {} {}'.format(tar_opts, tar_file_path, dirlist)
-    print ">>> INFO: Found <dirlist={}>\n{}".format(dirlist,BLANKS16)
+    print ">>> INFO: Found <dirlist={}>".format(dirlist)
     
     # Caller decides if this is a NORMAL (tar command run) or a test (just print tar command)        
     print("{}<mode={}> <cmd={}>".format(BLANKS16, mode, cmd))
@@ -186,6 +187,12 @@ def verify_args(args):
         exit(100)
     else:
         print(">>> INFO: No argument errors found")
+    
+    # Adjust the value of run mode to mathc RunCmd object
+    if args.run_mode == NORMAL_MODE:
+        args.run_mode = RunCmd.NORMAL_MODE
+    else:
+        args.run_mode = RunCmd.DEBUG_MODE
 
 
 def main():
@@ -195,7 +202,7 @@ def main():
     dirs = read_dirfile(input_args.dirfile)
     save_dirs(input_args.srcdir, input_args.tardir, dirs, input_args.run_mode)
     if input_args.dodots:
-        save_all_dot_dirs(input_args.srcdir, input_args.tardir, dirs, input_args.run_mode)
+        save_all_dot_dirs(input_args.srcdir, input_args.tardir, input_args.run_mode)
         
     return 0
 
