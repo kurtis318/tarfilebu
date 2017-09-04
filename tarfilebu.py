@@ -12,6 +12,8 @@ TEST_MODE = "test"
 BLANKS16=' '*16
 BLANKS20=' '*20
 DOTS_TAR_FILE_NAME="__DOTDIRS__"
+KVM_IMAGE_DIR="/var/lib/libvirt/images"
+KVM_SAVE_DIR="__KVM_IMAGES__"
 
 def parse_parms(cmd_parms):
     """
@@ -28,24 +30,54 @@ def parse_parms(cmd_parms):
     #    print("   Argument List: {}".format(str(cmd_parms)))
     #    print(">>>parse_parms(.): Finished")
 
+    # Here are options with values after the option
     parser = argparse.ArgumentParser()
-    parser.add_argument('-f', '--file', help="Directory list file", required=True, dest="dirfile")
-    parser.add_argument('-s', '--srcdir', help="Source directory", required=True, dest="srcdir")
-    parser.add_argument('-t', '--todir', help="Target directory", required=True, dest="tardir")
+    parser.add_argument('-f', '--file', 
+                        help="Directory list file", 
+                        required=True, 
+                        dest="dirfile")
+    parser.add_argument('-s', '--srcdir', 
+                        help="Source directory", 
+                        required=True, 
+                        dest="srcdir")
+    parser.add_argument('-t', '--todir', 
+                        help="Target directory", 
+                        required=True, 
+                        dest="tardir")
+    parser.add_argument('-m', '--mode', 
+                        help="Mode to run", 
+                        required=False, 
+                        choices=[NORMAL_MODE,TEST_MODE],
+                        default=NORMAL_MODE, 
+                        dest="run_mode")
 
-    #    parser.add_argument('-h', '--help', help='Display help text', required=False)
-    parser.add_argument('-a', '--all', help="Backup all directories", required=False, default=False, dest="backup_all")
-    parser.add_argument('-k', '--kvm', help='Backup kvm direcotry', required=False, default=False, dest="backup_kvm")
-    parser.add_argument('-m', '--mode', help="Mode to run", required=False, choices=[NORMAL_MODE,TEST_MODE],
-                            default=NORMAL_MODE, dest="run_mode")
-    parser.add_argument('-d', action='store_true', help='Unclude dot files', required=False, default=False, dest="dodots") 
+    # Here are options that have boolean values.  Notice action=
+    parser.add_argument('-a', '--all', 
+                        action='store_true',
+                        help="Backup all directories", 
+                        required=False, 
+                        default=False, 
+                        dest="backup_all")
+    parser.add_argument('-k', '--kvm', 
+                        action='store_true',
+                        help='Backup kvm direcotry', 
+                        required=False, 
+                        default=False, 
+                        dest="backup_kvm")
+
+    parser.add_argument('-d', 
+                        action='store_true', 
+                        help='include dot files', 
+                        required=False, 
+                        default=False, 
+                        dest="dodots") 
 
     # Perform parsing and issue messages.
     args = parser.parse_args()
 
     print(">>> Parameters are correct.")
     print("<args={}>".format(args))
-    return args
+    return args     # parse_parms()
 
 def read_dirfile(fname):
     """
@@ -59,7 +91,7 @@ def read_dirfile(fname):
         return 1
     print(">>> INFO: stdout follows")
     cmd_runner.dump_stdout()
-    return cmd_runner.get_stdout
+    return cmd_runner.get_stdout        # read_dirfile()
 
 def compute_dir_size_human_readable(fullpath):
     cmd_runner.run("du -sh " + fullpath + "|awk '{print $1;}'")
@@ -67,7 +99,7 @@ def compute_dir_size_human_readable(fullpath):
         hr_size = cmd_runner.get_stdout[0]
     else:
         hr_size = "error"
-    return hr_size
+    return hr_size      # compute_dir_size_human_readable()
 
 def count_num_files_dirs(path):
     files = folders = 0
@@ -79,7 +111,7 @@ def count_num_files_dirs(path):
 
     # print "{:,} files, {:,} folders".format(files, folders)
 
-    return(files,folders)
+    return(files,folders)       # count_num_files_dirs()
 
 def save_dirs(sdir, tdir, dirlist, mode):
 
@@ -123,7 +155,7 @@ def save_dirs(sdir, tdir, dirlist, mode):
         if cmd_runner.get_rc != 0:
             print(">>> ERROR: stderr follows:")
             cmd_runner.dump_stderr()
-    return
+    return      # save_dirs()
 
 def save_all_dot_dirs(sdir, tdir, mode):
     
@@ -166,7 +198,39 @@ def save_all_dot_dirs(sdir, tdir, mode):
         print(">>> ERROR: stderr follows:")
         cmd_runner.dump_stderr()   
     
-    return
+    return      # save_all_dot_dirs()
+
+def save_kvm_files(tdir, mode):
+    
+    if not os.path.isdir(KVM_IMAGE_DIR):
+        print(">>> WARNING: Did not find <KVM_IMAGE_DIR=<{}>. Skipping saving KVM image files.".format(KVM_IMAGE_DIR))
+        return
+    
+    # There is a directory of KVM images.  Make target directory for backup of KVM images.
+    cmd_runner.run('mkdir {}/{}'.format(tdir, KVM_SAVE_DIR), mode)
+    if cmd_runner.get_rc != 0:
+            print(">>> ERROR: Cannot create directory {}/{} for KVM images. Skipping KVM image save.".format(tdir, KVM_SAVE_DIR))
+            return
+    
+    # Build cp or rsync command.
+    cmd_runner.run("rsync")
+          
+    if cmd_runner.get_rc != 1:
+        cmd = "cp -p {}/* {}/{}/.".format(KVM_IMAGE_DIR, tdir, KVM_SAVE_DIR)
+    else:
+        cmd = "rsync -pog --progress {}/ {}/{}/".format(KVM_IMAGE_DIR, tdir, KVM_SAVE_DIR)
+    
+    # Got this far, its time to backup the KVM images. 
+    print("{}<mode={}> <cmd={}>".format(BLANKS16, mode, cmd))
+    msecs = cmd_runner.elaspe_time_run(cmd, mode)
+    print("{}<rc={}> Elapased time={}".format(BLANKS16,
+                                              cmd_runner.get_rc,
+                                              cmd_runner.ms_2_human_readable(msecs)))
+    if cmd_runner.get_rc != 0:
+        print(">>> ERROR: Return code from KVM image backup was not 0.  RC={}".format(cmd_runner.get_rc))
+    
+    return      # save_kvm_files()
+
 
 def verify_args(args):
     ecnt=0
@@ -193,6 +257,8 @@ def verify_args(args):
         args.run_mode = RunCmd.NORMAL_MODE
     else:
         args.run_mode = RunCmd.DEBUG_MODE
+        
+    return      # verify_args()
 
 
 def main():
@@ -203,8 +269,10 @@ def main():
     save_dirs(input_args.srcdir, input_args.tardir, dirs, input_args.run_mode)
     if input_args.dodots:
         save_all_dot_dirs(input_args.srcdir, input_args.tardir, input_args.run_mode)
+    if input_args.backup_kvm:
+        save_kvm_files(input_args.tardir, input_args.run_mode)
         
-    return 0
+    return      # main()
 
 
 if __name__ == "__main__":
