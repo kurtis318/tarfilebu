@@ -11,7 +11,8 @@ NORMAL_MODE = "normal"
 TEST_MODE = "test"
 BLANKS16=' '*16
 BLANKS20=' '*20
-DOTS_TAR_FILE_NAME="__DOTDIRS__"
+DOTS_TAR_DIR_FILE="__DOTDIRS__"
+DOTS_TAR_FILE_FILE="__DOTFILES__"
 KVM_IMAGE_DIR="/var/lib/libvirt/images"
 KVM_SAVE_DIR="__KVM_IMAGES__"
 
@@ -165,7 +166,7 @@ def save_all_dot_dirs(sdir, tdir, mode):
     cmd_runner.run(cmd)
     
     if cmd_runner.get_rc != 0:
-        print "{} WARN: Cannot find dot files in directory {}".format(BLANKS16, sdir)
+        print "{} WARN: Cannot find dot directories in directory {}".format(BLANKS16, sdir)
         print(">>> WARN: stderr follows:")
         cmd_runner.dump_stderr()   
         return
@@ -176,7 +177,7 @@ def save_all_dot_dirs(sdir, tdir, mode):
     base_tar_opts = '-C {} -p '.format(sdir)
 
     # Need to output to "special" tar file name.
-    tar_file_path = '{}/{}.tar'.format(tdir,DOTS_TAR_FILE_NAME)
+    tar_file_path = '{}/{}.tar'.format(tdir,DOTS_TAR_DIR_FILE)
 
     # If tar file already exists, add update flag
     if os.path.isfile(tar_file_path):
@@ -199,6 +200,49 @@ def save_all_dot_dirs(sdir, tdir, mode):
         cmd_runner.dump_stderr()   
     
     return      # save_all_dot_dirs()
+
+def save_all_dot_files(sdir, tdir, mode):
+    
+    # Generate list of files that start with a dot.  
+    awk_pgm = "awk '{print substr($1,3);}'"
+    cmd='cd {}; find . -maxdepth 1 -type f|{}|xargs'.format(sdir, awk_pgm)
+    cmd_runner.run(cmd)
+        
+    if cmd_runner.get_rc != 0:
+        print "{} WARN: Cannot find dot files in directory {}".format(BLANKS16, sdir)
+        print(">>> WARN: stderr follows:")
+        cmd_runner.dump_stderr()   
+        return
+    
+    # There should be ONLY 1 string returned which is blank delimited list of dirs beginning with dot.
+    file_list = cmd_runner.get_stdout[0]
+    
+    base_tar_opts = '-C {} -p '.format(sdir)
+
+    # Need to output to "special" tar file name.
+    tar_file_path = '{}/{}.tar'.format(tdir, DOTS_TAR_FILE_FILE)
+
+    # If tar file already exists, add update flag
+    if os.path.isfile(tar_file_path):
+        tar_opts = base_tar_opts + ' -uf'
+    else:
+        tar_opts = base_tar_opts + ' -cf'
+
+    # Now we have all the pieces to build a tar command.
+    cmd = 'tar {} {} {}'.format(tar_opts, tar_file_path, file_list)
+    print ">>> INFO: Found <file_list={}>".format(file_list)
+    
+    # Caller decides if this is a NORMAL (tar command run) or a test (just print tar command)        
+    print("{}<mode={}> <cmd={}>".format(BLANKS16, mode, cmd))
+    msecs = cmd_runner.elaspe_time_run(cmd, mode)
+    print("{}<rc={}> Elapased time={}".format(BLANKS16,
+                                              cmd_runner.get_rc,
+                                              cmd_runner.ms_2_human_readable(msecs)))
+    if cmd_runner.get_rc != 0:
+        print(">>> ERROR: stderr follows:")
+        cmd_runner.dump_stderr()   
+        
+    return      # save_all_dot_files()
 
 def save_kvm_files(tdir, mode):
     
@@ -269,6 +313,8 @@ def main():
     save_dirs(input_args.srcdir, input_args.tardir, dirs, input_args.run_mode)
     if input_args.dodots:
         save_all_dot_dirs(input_args.srcdir, input_args.tardir, input_args.run_mode)
+        save_all_dot_files(input_args.srcdir, input_args.tardir, input_args.run_mode)
+        
     if input_args.backup_kvm:
         save_kvm_files(input_args.tardir, input_args.run_mode)
         
