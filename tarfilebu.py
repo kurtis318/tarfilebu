@@ -114,6 +114,12 @@ def count_num_files_dirs(path):
 
     return(files,folders)       # count_num_files_dirs()
 
+# REF: https://www.tecmint.com/monitor-copy-backup-tar-progress-in-linux-using-pv-command/
+# create tar file using pv command:
+#        tar -czf - ./Downloads/ | (pv -p --timer --rate --bytes > backup.tgz)
+# Simple file copy:
+#         pv opensuse.vdi > /tmp/opensuse.vdi
+#
 def save_dirs(sdir, tdir, dirlist, mode):
 
     for __dir in dirlist:
@@ -217,7 +223,7 @@ def save_all_dot_files(sdir, tdir, mode):
     # There should be ONLY 1 string returned which is blank delimited list of dirs beginning with dot.
     file_list = cmd_runner.get_stdout[0]
     
-    base_tar_opts = '-C {} -p '.format(sdir)
+    base_tar_opts = '-C {} -p --ignore-failed-read'.format(sdir)
 
     # Need to output to "special" tar file name.
     tar_file_path = '{}/{}.tar'.format(tdir, DOTS_TAR_FILE_FILE)
@@ -262,9 +268,10 @@ def save_kvm_files(tdir, mode):
     if cmd_runner.get_rc != 1:
         cmd = "cp -p {}/* {}/{}/.".format(KVM_IMAGE_DIR, tdir, KVM_SAVE_DIR)
     else:
-        cmd = "rsync -pog {}/ {}/{}/".format(KVM_IMAGE_DIR, tdir, KVM_SAVE_DIR)
+        cmd = "rsync -pog {}/* {}/{}/".format(KVM_IMAGE_DIR, tdir, KVM_SAVE_DIR)
     
     # Got this far, its time to backup the KVM images. 
+    print(">>> INFO: Backing KVM images in {}.".format(KVM_IMAGE_DIR))
     print("{}<mode={}> <cmd={}>".format(BLANKS16, mode, cmd))
     msecs = cmd_runner.elaspe_time_run(cmd, mode)
     print("{}<rc={}> Elapased time={}".format(BLANKS16,
