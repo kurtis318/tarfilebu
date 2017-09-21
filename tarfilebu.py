@@ -37,14 +37,23 @@ def parse_parms(cmd_parms):
                         help="Directory list file", 
                         required=True, 
                         dest="dirfile")
+    
     parser.add_argument('-s', '--srcdir', 
                         help="Source directory", 
                         required=True, 
                         dest="srcdir")
+    
+    parser.add_argument('-p', '--pattern',
+                        help='Sub-directory pattern',
+                        required=True,
+                        dest='pattern')
+    
     parser.add_argument('-t', '--todir', 
                         help="Target directory", 
                         required=True, 
                         dest="tardir")
+ 
+    # Here are optional parameters   
     parser.add_argument('-m', '--mode', 
                         help="Mode to run", 
                         required=False, 
@@ -52,7 +61,13 @@ def parse_parms(cmd_parms):
                         default=NORMAL_MODE, 
                         dest="run_mode")
 
-    # Here are options that have boolean values.  Notice action=
+    parser.add_argument('-z', '--pdsize', 
+                        help='Max number of output dirs',
+                        required=False,
+                        default=5, 
+                        dest="max_dir_count")
+
+    # Here are options that have boolean values.  Notice  action=
     parser.add_argument('-a', '--all', 
                         action='store_true',
                         help="Backup all directories", 
@@ -287,21 +302,21 @@ def verify_args(args):
     ecnt=0
     if not os.path.isfile(args.dirfile):
         ecnt+=1
-        print(">>> ERROR: directory file not found <dirfile={}".format(args.dirfile))
+        print(">>> ERROR: directory file not found <dirfile={}>".format(args.dirfile))
 
     if not os.path.isdir(args.srcdir):
         ecnt+=1
-        print(">>> ERROR: source directory not found <srcdir={}".format(args.srcdir))
+        print(">>> ERROR: source directory not found <srcdir={}>".format(args.srcdir))
 
     if not os.path.isdir(args.tardir):
         ecnt+=1
-        print(">>> ERROR: target directory not found <tardir={}".format(args.srcdir))
+        print(">>> ERROR: target directory not found <tardir={}>".format(args.srcdir))
 
     if ecnt:
         print(">>> ERROR: {} argument errors found.  Aborting script now.".format(ecnt))
         exit(100)
-    else:
-        print(">>> INFO: No argument errors found")
+
+    print(">>> INFO: No argument errors found")
     
     # Adjust the value of run mode to mathc RunCmd object
     if args.run_mode == NORMAL_MODE:
