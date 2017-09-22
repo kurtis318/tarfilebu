@@ -4,8 +4,10 @@ import sys
 import os
 import argparse
 from RunCmdPy import RunCmd
+from UniqueDir import UniqueDir
 
 cmd_runner = RunCmd()
+u_dir = UniqueDir()
 
 NORMAL_MODE = "normal"
 TEST_MODE = "test"
@@ -18,7 +20,8 @@ KVM_SAVE_DIR="__KVM_IMAGES__"
 
 def parse_parms(cmd_parms):
     """
-
+    Parse the command line parameters only.  No verification is done.
+    
     :param cmd_parms: Command-line parameters
     :type cmd_parms:  array of strings
     :return: command parameters
@@ -97,9 +100,13 @@ def parse_parms(cmd_parms):
 
 def read_dirfile(fname):
     """
-
-    :return:    list of directories
+    Private utility function to read the file that contains list of directories to backup.
+    
+    :param fname: Full directory file path
+    :return: connents of directory file
+    :rtype: list
     """
+    
     print(">>> read_dirfile(): <fname={}>".format(fname))
     cmd_runner.run("awk '!/^ *#/ && NF' {}".format(fname))
     if cmd_runner.get_rc != 0:
@@ -110,6 +117,14 @@ def read_dirfile(fname):
     return cmd_runner.get_stdout        # read_dirfile()
 
 def compute_dir_size_human_readable(fullpath):
+    """
+    Private utility function to read the file that contains list of directories to backup.
+    
+    :param fullpath: Full path to a directory
+    :return: human-readable size of directory
+    :rtype: string
+    """
+    
     cmd_runner.run("du -sh " + fullpath + "|awk '{print $1;}'")
     if cmd_runner.rc == 0:
         hr_size = cmd_runner.get_stdout[0]
@@ -118,6 +133,14 @@ def compute_dir_size_human_readable(fullpath):
     return hr_size      # compute_dir_size_human_readable()
 
 def count_num_files_dirs(path):
+    """
+    Private utility function that counts files and directories in a given directory.
+    
+    :param path: Full path to a directory to have counted
+    :return: (number of files, number of directories)
+    :rtype: (int, int)
+    """
+
     files = folders = 0
 
     for _, dirnames, filenames in os.walk(path):
@@ -136,6 +159,16 @@ def count_num_files_dirs(path):
 #         pv opensuse.vdi > /tmp/opensuse.vdi
 #
 def save_dirs(sdir, tdir, dirlist, mode):
+    """
+    Private utility function that saves a list of directories to new directory.
+    
+    :param sdir: Full path to source directory to backup
+    :param tdir: Full path to target directory
+    :param dirlist: List of directories in source directory to backup
+    :param mode: normal (run tar command) or test (just simulate running)
+    :return: nothing
+    :rtype: nothing
+    """
 
     for __dir in dirlist:
 
@@ -180,6 +213,15 @@ def save_dirs(sdir, tdir, dirlist, mode):
     return      # save_dirs()
 
 def save_all_dot_dirs(sdir, tdir, mode):
+    """
+    Private utility function that saves all directories in source directory that begin with a dot.
+    
+    :param sdir: Full path to source directory to backup
+    :param tdir: Full path to target directory
+    :param mode: normal (run tar command) or test (just simulate running)
+    :return: nothing
+    :rtype: nothing
+    """
     
     # Generate list of dirs that start with a dot.  Must cd to base dir and then use find. Easier to grep.
     awk_pgm = "awk '{print substr($1,3);}'"
@@ -223,7 +265,16 @@ def save_all_dot_dirs(sdir, tdir, mode):
     return      # save_all_dot_dirs()
 
 def save_all_dot_files(sdir, tdir, mode):
+    """
+    Private utility function that saves files starting with a dot in source directory.
     
+    :param sdir: Full path to source directory to backup
+    :param tdir: Full path to target directory
+    :param mode: normal (run tar command) or test (just simulate running)
+    :return: nothing
+    :rtype: nothing
+    """
+
     # Generate list of files that start with a dot.  
     awk_pgm = "awk '{print substr($1,3);}'"
     cmd='cd {}; find . -maxdepth 1 -type f|{}|xargs'.format(sdir, awk_pgm)
@@ -266,6 +317,14 @@ def save_all_dot_files(sdir, tdir, mode):
     return      # save_all_dot_files()
 
 def save_kvm_files(tdir, mode):
+    """
+    Private utility function that saves kvm files in /var/lib/libvirt/images.
+    
+    :param tdir: Full path to target directory
+    :param mode: normal (run tar command) or test (just simulate running)
+    :return: nothing
+    :rtype: nothing
+    """
     
     if not os.path.isdir(KVM_IMAGE_DIR):
         print(">>> WARNING: Did not find <KVM_IMAGE_DIR=<{}>. Skipping saving KVM image files.".format(KVM_IMAGE_DIR))
@@ -297,8 +356,15 @@ def save_kvm_files(tdir, mode):
     
     return      # save_kvm_files()
 
-
 def verify_args(args):
+    """
+    Private utility function that verifies command-line parameters.  This function can exit script.
+    
+    :param args: Dictionary?? of arguments 
+    :return: nothing
+    :rtype: nothing
+    """
+
     ecnt=0
     if not os.path.isfile(args.dirfile):
         ecnt+=1
@@ -311,8 +377,16 @@ def verify_args(args):
     if not os.path.isdir(args.tardir):
         ecnt+=1
         print(">>> ERROR: target directory not found <tardir={}>".format(args.srcdir))
+    else:
+        
+        # Let UniquDir object determine if input path is writable
+        rc, args.tardir = u_dir.mkdir(args.tardir, args.pattern, args.max_dir_count)
+        if rc != 0:
+            print('>>> ERROR: Error creating new subdirectory in <tardir={}>'.format(args.tardir))
+            exit(50)
 
     if ecnt:
+        ecnt+=1
         print(">>> ERROR: {} argument errors found.  Aborting script now.".format(ecnt))
         exit(100)
 
@@ -328,6 +402,13 @@ def verify_args(args):
 
 
 def main():
+    """
+    Private utility function that controls script execuction.
+    
+    :param none
+    :return: nothing
+    :rtype: nothing
+    """
     print("\nRunning main() function")
     input_args = parse_parms(sys.argv)
     verify_args(input_args)
