@@ -342,7 +342,7 @@ def save_kvm_files(tdir, mode):
     if cmd_runner.get_rc != 1:
         cmd = "cp -p {}/* {}/{}/.".format(KVM_IMAGE_DIR, tdir, KVM_SAVE_DIR)
     else:
-        cmd = "rsync -pog {}/* {}/{}/".format(KVM_IMAGE_DIR, tdir, KVM_SAVE_DIR)
+        cmd = "rsync -pog --progress {}/* {}/{}/".format(KVM_IMAGE_DIR, tdir, KVM_SAVE_DIR)
     
     # Got this far, its time to backup the KVM images. 
     print(">>> INFO: Backing KVM images in {}.".format(KVM_IMAGE_DIR))
