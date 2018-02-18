@@ -16,6 +16,7 @@ BLANKS20=' '*20
 DOTS_TAR_DIR_FILE="__DOTDIRS__"
 DOTS_TAR_FILE_FILE="__DOTFILES__"
 KVM_IMAGE_DIR="/var/lib/libvirt/images"
+# KVM_IMAGE_DIR="/ssd2/var.lib.libvirt.images"
 KVM_SAVE_DIR="__KVM_IMAGES__"
 
 def parse_parms(cmd_parms):
