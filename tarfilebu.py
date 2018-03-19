@@ -3,6 +3,8 @@
 import sys
 import os
 import argparse
+import subprocess
+
 from RunCmdPy import RunCmd
 from UniqueDir import UniqueDir
 
@@ -348,12 +350,14 @@ def save_kvm_files(tdir, mode):
     # Got this far, its time to backup the KVM images. 
     print(">>> INFO: Backing KVM images in {}.".format(KVM_IMAGE_DIR))
     print("{}<mode={}> <cmd={}>".format(BLANKS16, mode, cmd))
-    msecs = cmd_runner.elaspe_time_run(cmd, mode)
-    print("{}<rc={}> Elapased time={}".format(BLANKS16,
-                                              cmd_runner.get_rc,
-                                              cmd_runner.ms_2_human_readable(msecs)))
-    if cmd_runner.get_rc != 0:
-        print(">>> ERROR: Return code from KVM image backup was not 0.  RC={}".format(cmd_runner.get_rc))
+    subprocess.call(cmd, shell=True)
+    
+    # msecs = cmd_runner.elaspe_time_run(cmd, mode)
+    # print("{}<rc={}> Elapased time={}".format(BLANKS16,
+    #                                          cmd_runner.get_rc,
+    #                                          cmd_runner.ms_2_human_readable(msecs)))
+    #if cmd_runner.get_rc != 0:
+    #    print(">>> ERROR: Return code from KVM image backup was not 0.  RC={}".format(cmd_runner.get_rc))
     
     return      # save_kvm_files()
 
