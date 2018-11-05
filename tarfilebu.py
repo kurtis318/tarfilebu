@@ -18,8 +18,8 @@ BLANKS20=' '*20
 DOTS_TAR_DIR_FILE="__DOTDIRS__"
 DOTS_TAR_FILE_FILE="__DOTFILES__"
 KVM_IMAGE_DIR="/var/lib/libvirt/images"
-# KVM_IMAGE_DIR="/ssd2/var.lib.libvirt.images"
 KVM_SAVE_DIR="__KVM_IMAGES__"
+CRT_KVM_XML_FILES_CMD="virsh list --all|tail -n +3|head -n -1|awk '{print $2;}'|xargs -I {} echo \"virsh dumpxml {} > {}.xml\" >t.sh;sh ./t.sh"
 
 def parse_parms(cmd_parms):
     """
@@ -318,7 +318,23 @@ def save_all_dot_files(sdir, tdir, mode):
         cmd_runner.dump_stderr()   
         
     return      # save_all_dot_files()
+    
+def create_kvm_xml_files(tdir, mode):
+    """
+    Private utility function to create KVM xml files for all VMs in the
+    target save file.
+    """
 
+    cmd = 'cd {}/{};{}'.format(tdir, KVM_SAVE_DIR, CRT_KVM_XML_FILES_CMD)
+    cmd_runner.run(cmd, mode)
+    
+    print("{}<mode={}> <cmd={}>".format(BLANKS16, mode, cmd))
+    msecs = cmd_runner.elaspe_time_run(cmd, mode)
+    print("{}<rc={}> Elapased time={}".format(BLANKS16,
+                                              cmd_runner.get_rc,
+                                              cmd_runner.ms_2_human_readable(msecs)))
+    return
+    
 def save_kvm_files(tdir, mode):
     """
     Private utility function that saves kvm files in /var/lib/libvirt/images.
@@ -338,6 +354,9 @@ def save_kvm_files(tdir, mode):
     if cmd_runner.get_rc != 0:
             print(">>> ERROR: Cannot create directory {}/{} for KVM images. Skipping KVM image save.".format(tdir, KVM_SAVE_DIR))
             return
+
+    # Create xml files for each VM in target kvm directory.
+    create_kvm_xml_files(tdir, mode)
     
     # Build cp or rsync command.
     cmd_runner.run("rsync")
@@ -350,7 +369,10 @@ def save_kvm_files(tdir, mode):
     # Got this far, its time to backup the KVM images. 
     print(">>> INFO: Backing KVM images in {}.".format(KVM_IMAGE_DIR))
     print("{}<mode={}> <cmd={}>".format(BLANKS16, mode, cmd))
-    subprocess.call(cmd, shell=True)
+    if mode == 'normal':
+        subprocess.call(cmd, shell=True)
+    else:
+        print('{}skipping exectution: <cmd={}>'.format(BLANKS16, cmd))
     
     # msecs = cmd_runner.elaspe_time_run(cmd, mode)
     # print("{}<rc={}> Elapased time={}".format(BLANKS16,
@@ -417,11 +439,11 @@ def main():
     print("\nRunning main() function")
     input_args = parse_parms(sys.argv)
     verify_args(input_args)
-    dirs = read_dirfile(input_args.dirfile)
-    save_dirs(input_args.srcdir, input_args.tardir, dirs, input_args.run_mode)
-    if input_args.dodots:
-        save_all_dot_dirs(input_args.srcdir, input_args.tardir, input_args.run_mode)
-        save_all_dot_files(input_args.srcdir, input_args.tardir, input_args.run_mode)
+    # dirs = read_dirfile(input_args.dirfile)
+    # save_dirs(input_args.srcdir, input_args.tardir, dirs, input_args.run_mode)
+    # if input_args.dodots:
+        # save_all_dot_dirs(input_args.srcdir, input_args.tardir, input_args.run_mode)
+        # save_all_dot_files(input_args.srcdir, input_args.tardir, input_args.run_mode)
         
     if input_args.backup_kvm:
         save_kvm_files(input_args.tardir, input_args.run_mode)
