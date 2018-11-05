@@ -439,11 +439,11 @@ def main():
     print("\nRunning main() function")
     input_args = parse_parms(sys.argv)
     verify_args(input_args)
-    # dirs = read_dirfile(input_args.dirfile)
-    # save_dirs(input_args.srcdir, input_args.tardir, dirs, input_args.run_mode)
-    # if input_args.dodots:
-        # save_all_dot_dirs(input_args.srcdir, input_args.tardir, input_args.run_mode)
-        # save_all_dot_files(input_args.srcdir, input_args.tardir, input_args.run_mode)
+    dirs = read_dirfile(input_args.dirfile)
+    save_dirs(input_args.srcdir, input_args.tardir, dirs, input_args.run_mode)
+    if input_args.dodots:
+        save_all_dot_dirs(input_args.srcdir, input_args.tardir, input_args.run_mode)
+        save_all_dot_files(input_args.srcdir, input_args.tardir, input_args.run_mode)
         
     if input_args.backup_kvm:
         save_kvm_files(input_args.tardir, input_args.run_mode)
