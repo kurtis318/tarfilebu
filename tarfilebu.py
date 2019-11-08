@@ -171,6 +171,13 @@ def save_dirs(sdir, tdir, dirlist, mode):
     :param mode: normal (run tar command) or test (just simulate running)
     :return: nothing
     :rtype: nothing
+
+    TODO:   Add code to generate a list of file of directories to exclude.
+            Use the -X option to specify file with exclude patterns.
+            Here is a command to create the file with exclude patterns:
+            find . -type d -name "*cache*"|sort|awk '{printf("%s/*\n",$1);}'
+            Need to also use this for save_all_dot_dirs().
+
     """
 
     for __dir in dirlist:
@@ -232,7 +239,7 @@ def save_all_dot_dirs(sdir, tdir, mode):
     cmd_runner.run(cmd)
     
     if cmd_runner.get_rc != 0:
-        print "{} WARN: Cannot find dot directories in directory {}".format(BLANKS16, sdir)
+        print("{} WARN: Cannot find dot directories in directory {}".format(BLANKS16, sdir))
         print(">>> WARN: stderr follows:")
         cmd_runner.dump_stderr()   
         return
@@ -253,7 +260,7 @@ def save_all_dot_dirs(sdir, tdir, mode):
 
     # Now we have all the pieces to build a tar command.
     cmd = 'tar {} {} {}'.format(tar_opts, tar_file_path, dirlist)
-    print ">>> INFO: Found <dirlist={}>".format(dirlist)
+    print( ">>> INFO: Found <dirlist={}>".format(dirlist))
     
     # Caller decides if this is a NORMAL (tar command run) or a test (just print tar command)        
     print("{}<mode={}> <cmd={}>".format(BLANKS16, mode, cmd))
@@ -284,7 +291,7 @@ def save_all_dot_files(sdir, tdir, mode):
     cmd_runner.run(cmd)
         
     if cmd_runner.get_rc != 0:
-        print "{} WARN: Cannot find dot files in directory {}".format(BLANKS16, sdir)
+        print ("{} WARN: Cannot find dot files in directory {}".format(BLANKS16, sdir))
         print(">>> WARN: stderr follows:")
         cmd_runner.dump_stderr()   
         return
@@ -305,7 +312,7 @@ def save_all_dot_files(sdir, tdir, mode):
 
     # Now we have all the pieces to build a tar command.
     cmd = 'tar {} {} {}'.format(tar_opts, tar_file_path, file_list)
-    print ">>> INFO: Found <file_list={}>".format(file_list)
+    print (">>> INFO: Found <file_list={}>".format(file_list))
     
     # Caller decides if this is a NORMAL (tar command run) or a test (just print tar command)        
     print("{}<mode={}> <cmd={}>".format(BLANKS16, mode, cmd))
@@ -369,7 +376,10 @@ def save_kvm_files(tdir, mode):
     # Got this far, its time to backup the KVM images. 
     print(">>> INFO: Backing KVM images in {}.".format(KVM_IMAGE_DIR))
     print("{}<mode={}> <cmd={}>".format(BLANKS16, mode, cmd))
-    if mode == 'normal':
+
+    # MUST use NORMAL_MODE from class RunCmd because this is what we have
+    #    mapped it to.
+    if mode == RunCmd.NORMAL_MODE:
         subprocess.call(cmd, shell=True)
     else:
         print('{}skipping exectution: <cmd={}>'.format(BLANKS16, cmd))
