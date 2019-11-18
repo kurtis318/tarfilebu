@@ -67,7 +67,7 @@ def parse_parms(cmd_parms):
                         default=NORMAL_MODE, 
                         dest="run_mode")
 
-    parser.add_argument('-z', '--pdsize', 
+    parser.add_argument('-z', '--maxdirs', 
                         help='Max number of output dirs',
                         required=False,
                         default=5, 
@@ -115,8 +115,10 @@ def read_dirfile(fname):
     if cmd_runner.get_rc != 0:
         print(">>> ERROR: <rc={}>".format(cmd_runner.get_rc))
         return 1
-    print(">>> INFO: stdout follows")
-    cmd_runner.dump_stdout()
+    
+    # print(">>> INFO: stdout follows")
+    # cmd_runner.dump_stdout()
+    
     return cmd_runner.get_stdout        # read_dirfile()
 
 def compute_dir_size_human_readable(fullpath):
@@ -417,7 +419,9 @@ def verify_args(args):
     else:
         
         # Let UniquDir object determine if input path is writable
-        rc, args.tardir = u_dir.mkdir(args.tardir, args.pattern, args.max_dir_count)
+        # Don't forget to convert max_dir_count parameter to an integer.
+        cnt = int(args.max_dir_count)
+        rc, args.tardir = u_dir.mkdir(args.tardir, args.pattern, cnt)
         if rc != 0:
             print('>>> ERROR: Error creating new subdirectory in <tardir={}>'.format(args.tardir))
             exit(50)
